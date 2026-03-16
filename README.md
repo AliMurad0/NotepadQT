@@ -1,127 +1,237 @@
-📝 Notepad with Undo — Qt GUI & Custom Stack
-
-A text editing application with undo history powered by a hand-rolled, template-based linked list stack — no STL allowed.
-
-🧠 Overview
-This project implements a minimal text editor in C++ with a Qt GUI, where every keystroke and deletion is tracked using a custom stack built from scratch using templated linked lists. The goal was to demonstrate deep understanding of memory management, the Command Pattern, and LIFO-based undo logic — without relying on std::stack or any STL container.
-
-✨ Features
-
-✅ Insert & Delete text with cursor-aware positioning
-✅ Undo — reverses any action using a custom stack
-✅ Qt GUI — clean, minimalist interface with a live status bar
-✅ Command Pattern — every action is encapsulated as a Command struct
-✅ No STL — the stack is implemented via raw pointer-based linked list
-✅ No memory leaks — custom destructor handles all heap cleanup
-
-
-🏗️ Architecture
-The project follows a 3-Layer Modular Architecture with strict separation of concerns:
-┌─────────────────────────────────────────────┐
-│         Interface Layer  (Qt GUI)            │
-│   Captures user input, renders text.        │
-│   Zero processing — only signals backend.   │
-├─────────────────────────────────────────────┤
-│         Logic Layer  (Notepad.cpp/.h)        │
-│   Converts actions into Command objects.    │
-│   Implements undo inverse logic.            │
-├─────────────────────────────────────────────┤
-│    Data Structure Layer  (SimpleStack.h)     │
-│   Template linked-list stack on the heap.  │
-│   Strict LIFO. O(1) push/pop.               │
-└─────────────────────────────────────────────┘
-
-📁 File Structure
-├── command.h          # Command struct & ActionType enum (INSERT / DELETE)
-├── simpleStack.h      # Template linked-list stack (no STL)
-├── Notepad.h          # Notepad class declaration
-├── Notepad.cpp        # Notepad logic — insert, delete, undo
-└── main.cpp           # Qt GUI entry point (not included in this repo)
-
-🔬 Data Structures & Algorithms
-SimpleStack<T> — Custom Template Stack
-A generic, reusable stack backed by a singly linked list.
-cpptemplate <typename T>
-class SimpleStack {
-    struct Node { T data; Node* next; };
-    Node* top_node;
-public:
-    void push(T item);   // O(1)
-    T    pop();          // O(1)
-    T    peek();         // O(1)
-    bool isEmpty();
-    ~SimpleStack();      // Cleans up all heap nodes
-};
-OperationTime ComplexityNotespushO(1)Allocates new node on heappopO(1)Frees node, returns dataInsert/Delete textO(N)Standard std::string behaviorSpaceO(N)Linear in number of actions
-Why linked list over array?
-
-Infinite growth — history expands dynamically with no fixed limit
-Constant-time push/pop regardless of history depth
-Manual memory control — demonstrates heap allocation and pointer management
-
-
-The Command Pattern
-Every user action is wrapped into a Command object before being pushed to the stack:
-cppstruct Command {
-    ActionType type;   // INSERT or DELETE
-    string     text;   // The affected text
-    int        position;
-    int        length;
-};
-Undo simply pops the last Command and applies the mathematical inverse:
-
-If the action was INSERT → erase that text
-If the action was DELETE → re-insert that text
-
-
-⚙️ How It Works — Data Flow
+# 📝 Notepad with Undo — Qt GUI & Custom Stack
+**Intelligent Text Editing with a Hand-Rolled, Template-Based Linked List Stack**
+ 
+ 
+> A minimal text editor built in **C++ with a Qt GUI**, where undo history is powered entirely by a **custom stack built from scratch** using templated linked lists — no `std::stack`, no STL containers.
+ 
+[Features](#-key-features) • [Architecture](#️-system-architecture) • [Quick Start](#-quick-start) • [Complexity](#-complexity-analysis) • [Team](#-team)
+ 
+---
+ 
+## 📖 Overview
+ 
+Standard text editors rely on black-box STL containers and pre-built undo libraries. This project strips all of that away.
+ 
+The **Notepad with Undo** implements a complete text editing pipeline — from capturing keystrokes in a Qt GUI to reversing them using a **raw, pointer-based linked list stack** — demonstrating deep algorithmic control at every layer.
+ 
+This approach achieves **O(1) push/pop** for all undo operations with **zero memory leaks**, using manual heap allocation and a custom destructor — without relying on any standard library containers.
+ 
+---
+ 
+## ✨ Key Features
+ 
+| Feature | Description |
+|---|---|
+| 🧠 Custom Template Stack | `SimpleStack<T>` — a generic linked-list stack with manual heap management |
+| ↩️ Undo Engine | Reverses any insert or delete action using the Command Pattern |
+| 🖥️ Qt GUI | Minimalist interface with a live status bar showing internal stack events |
+| 🔒 No STL Containers | `std::stack` is fully replaced by a raw pointer-based implementation |
+| ♻️ No Memory Leaks | Custom destructor traverses and frees all heap nodes on exit |
+| 🧩 Command Pattern | Every keystroke is encapsulated as a `Command` struct before being pushed |
+| 📐 Modular Architecture | Strict 3-layer separation: GUI → Logic → Data Structure |
+ 
+---
+ 
+## 🏗️ System Architecture
+ 
+The system is built on a **3-Layer Modular Architecture**, mirroring real-world software engineering principles:
+ 
+```
+┌──────────────────────────────────────────────────────────┐
+│              Interface Layer  (Qt GUI / main.cpp)         │
+│   Captures user input. Renders text. Zero logic here.    │
+│   Sends signals → backend via Qt Slot/Signal mechanism.  │
+├──────────────────────────────────────────────────────────┤
+│              Logic Layer  (Notepad.cpp / Notepad.h)       │
+│   The "Controller." Converts actions into Command objs.  │
+│   Implements inverse logic for undo (insert ↔ delete).   │
+├──────────────────────────────────────────────────────────┤
+│         Data Structure Layer  (SimpleStack.h)             │
+│   Raw C++ template class. Manages heap-allocated nodes.  │
+│   Strict LIFO. O(1) push/pop. Custom destructor.         │
+└──────────────────────────────────────────────────────────┘
+```
+ 
+### 🔁 The Qt–Backend Data Flow
+ 
+```
 User types "A"
-     │
-     ▼
-Qt captures keystroke
-     │
-     ▼
+      │
+      ▼
+Qt captures keystroke via Signal
+      │
+      ▼
 Notepad::insertText("A")
-  → wraps into Command { INSERT, "A", pos, len }
-  → undoStack.push(cmd)
-  → content.insert(...)
-     │
-     ▼
-User clicks Undo
-     │
-     ▼
+  ├── Wraps into Command { INSERT, "A", position, length }
+  ├── undoStack.push(cmd)        ← O(1), new Node on Heap
+  └── content.insert(...)        ← O(N), std::string operation
+      │
+      ▼
+User clicks "Undo"
+      │
+      ▼
 Notepad::undo()
-  → cmd = undoStack.pop()
-  → reverses the action on content
-  → GUI updates via getContent()
-
-🖥️ Building & Running
-Prerequisites
-
-C++17 or later
-Qt Framework (Qt5 or Qt6)
-A C++ compiler (GCC / Clang / MSVC)
-
-Build with Qt Creator
-
-Clone the repository
-Open the .pro file in Qt Creator
-Configure the kit and click Run
-
-Build with CMake (if applicable)
-bashmkdir build && cd build
+  ├── cmd = undoStack.pop()      ← O(1), frees Node from Heap
+  ├── Reverses the action on content
+  └── GUI updates via getContent()
+```
+ 
+---
+ 
+## 📁 Project Structure
+ 
+```
+notepad-undo/
+│
+├── command.h           # Command struct & ActionType enum (INSERT / DELETE)
+├── simpleStack.h       # Template linked-list stack — no STL
+├── Notepad.h           # Notepad class declaration
+├── Notepad.cpp         # Core logic — insertText, deleteText, undo
+└── main.cpp            # Qt GUI entry point (Slot/Signal wiring)
+```
+ 
+---
+ 
+## 🚀 Quick Start
+ 
+### Prerequisites
+- C++17 or later
+- [Qt Framework](https://www.qt.io/download) — Qt5 or Qt6
+- GCC / Clang / MSVC
+ 
+### 1. Clone the Repository
+```bash
+git clone https://github.com/YOUR_USERNAME/notepad-undo.git
+cd notepad-undo
+```
+ 
+### 2. Open in Qt Creator
+1. Open the `.pro` file in **Qt Creator**
+2. Select your kit (Desktop GCC/MSVC)
+3. Click **Build → Run**
+ 
+### 3. Build with CMake (Alternative)
+```bash
+mkdir build && cd build
 cmake ..
 make
 ./notepad
-
-💡 Design Decisions & Challenges
-Why a custom stack instead of std::stack?
-The project requirement was to demonstrate manual memory management. Using std::stack would abstract away the exact pointer logic (heap allocation, node chaining, destructor cleanup) that this project was designed to showcase.
-Why minimalist Qt GUI?
-A minimal interface ensures the demo focuses on the stack algorithm in action, not graphical rendering. The status bar deliberately logs internal stack events (e.g., "Pushed [INSERT] to Stack") to make the invisible algorithm visible during a live demo.
-Linked List vs. Array-backed Stack
-We chose a linked list despite its added complexity (pointer management, risk of segfaults) because it offers dynamic, unbounded growth — more appropriate for a real undo history that has no predetermined limit.
-
-📊 Complexity Summary
-OperationTimeSpacePush to stackO(1)O(1) per nodePop (undo)O(1)—Insert textO(N)—Delete textO(N)—Full undo history—O(N) total
-Hello!  This is my first Project!!
+```
+ 
+---
+ 
+## 🔬 Data Structures & Algorithms
+ 
+### `SimpleStack<T>` — Custom Template Stack
+ 
+A fully generic, reusable stack backed by a **singly linked list**:
+ 
+```cpp
+template <typename T>
+class SimpleStack {
+    struct Node {
+        T     data;
+        Node* next;
+        Node(T val) : data(val), next(nullptr) {}
+    };
+    Node* top_node;
+ 
+public:
+    void push(T item);    // O(1) — allocates new Node on Heap
+    T    pop();           // O(1) — frees Node, returns data
+    T    peek();          // O(1) — no deallocation
+    bool isEmpty() const;
+    ~SimpleStack();       // Traverses & frees all remaining Nodes
+};
+```
+ 
+**Why a Linked List instead of an Array?**
+ 
+| Property | Linked List (This Project) | Dynamic Array (`std::vector`) |
+|---|---|---|
+| Growth | Infinite — no fixed limit | Requires reallocation at capacity |
+| Push / Pop | **O(1) always** | Amortized O(1), worst-case O(N) |
+| Memory Layout | Per-node heap allocation | Contiguous memory block |
+| Manual Control | ✅ Full pointer access | ❌ Abstracted away |
+ 
+---
+ 
+### The Command Pattern
+ 
+Every user action is encapsulated as a `Command` object **before** any mutation occurs:
+ 
+```cpp
+struct Command {
+    ActionType type;    // INSERT or DELETE
+    string     text;    // The affected text content
+    int        position;
+    int        length;
+};
+```
+ 
+Undo applies the **mathematical inverse**:
+ 
+```cpp
+void Notepad::undo() {
+    Command cmd = undoStack.pop();
+ 
+    if (cmd.type == INSERT)
+        content.erase(cmd.position, cmd.length);          // Reverse insert → delete
+    else
+        content.insert(cmd.position - cmd.length, cmd.text); // Reverse delete → reinsert
+}
+```
+ 
+---
+ 
+## 📊 Complexity Analysis
+ 
+| Operation | Time Complexity | Notes |
+|---|---|---|
+| `push` (record action) | **O(1)** | New node allocated on heap |
+| `pop` (undo) | **O(1)** | Node freed immediately |
+| `peek` | **O(1)** | No deallocation |
+| Insert text | O(N) | `std::string::insert` — length dependent |
+| Delete text | O(N) | `std::string::erase` — length dependent |
+| **Space (history)** | **O(N)** | Linear in number of stored actions |
+ 
+> **O(1) undo** — regardless of how deep the history is — is the core algorithmic achievement of this project.
+ 
+---
+ 
+## 🖥️ Interface & Visual Debugging
+ 
+The Qt GUI was intentionally kept **minimalist** so the focus remains on the algorithm, not graphical overhead.
+ 
+| Element | Purpose |
+|---|---|
+| Central Text Area | The editing canvas — directly mirrors the `content` string in memory |
+| Status Bar | Logs internal stack events live (e.g., *"Pushed \[INSERT\] to Stack"*) |
+| Undo Button | Triggers `Notepad::undo()` → pops stack → refreshes GUI |
+ 
+The **Status Bar** is a deliberate design choice: it makes the invisible stack algorithm *visible* during live demos, proving the DSA concept in real time without a debugger.
+ 
+---
+ 
+## 🔮 Future Work
+ 
+- [ ] **Redo Stack** — Add a second `SimpleStack<Command>` for redo functionality
+- [ ] **Persistent History** — Serialize the stack to disk for session recovery
+- [ ] **Doubly Linked List** — Explore bidirectional traversal for redo optimization
+- [ ] **File I/O** — Save and load `.txt` files via Qt's `QFile`
+- [ ] **Cursor Highlighting** — Visual cursor position indicator in the GUI
+ 
+---
+ 
+## 🛠️ Tech Stack
+ 
+| Layer | Technologies |
+|---|---|
+| Language | C++17 |
+| GUI Framework | Qt5 / Qt6 — QWidget, QTextEdit, Slot/Signal |
+| Data Structure | Custom Template Linked-List Stack |
+| Design Pattern | Command Pattern |
+| Build System | Qt Creator / CMake |
+| IDE | Qt Creator + VS Code |
+ 
+---
